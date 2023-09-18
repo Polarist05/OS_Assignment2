@@ -11,6 +11,7 @@ class Thread_safe_buffer
     static bool deQueueFlag = false;
     static object enqueueObj = new object();
     static object dequeueObj = new object();
+    static object globalObj = new object();
 
     static void EnQueue(int eq)
     {
@@ -34,6 +35,11 @@ class Thread_safe_buffer
 
         if (Count + 1 >= Capacity)
         {
+            lock (dequeueObj)
+            {
+                while (deQueueFlag) ;
+                deQueueFlag = true;
+            }
             int newCapacity = Capacity * 2;
             var newBuffer = new int[newCapacity];
             for (int i = 0, j = Front; j != Back; i++) 
@@ -45,10 +51,11 @@ class Thread_safe_buffer
             Back = Count;
             Capacity = newCapacity;
             TSBuffer = newBuffer;
+            deQueueFlag = false;
         }
         TSBuffer[Back] = eq;
         Back = (++Back >= Capacity) ? 0 : Back;
-        Count += 1;
+            Count += 1;
         enQueueFlag = false;
     }
 
@@ -71,12 +78,11 @@ class Thread_safe_buffer
 
             }
         }
-        int x = 0;
-        x = TSBuffer[Front];
         if(Count > 0)
         {
+            var x = TSBuffer[Front];
             Front = ++Front==Capacity?0:Front;
-            Count -= 1;
+                Count -= 1;
             deQueueFlag = false;
             return x;
         }
@@ -84,7 +90,7 @@ class Thread_safe_buffer
         {
             deQueueFlag = false;
             //ADD EXCEPTION OR SOMETHING
-            return 0;
+            return -1;
         }
     }
 
@@ -119,7 +125,14 @@ class Thread_safe_buffer
         for (i = 0; i < 60; i++)
         {
             j = DeQueue();
-            Console.WriteLine("j={0}, thread:{1}", j, t);
+            if (j != -1)
+            {
+                Console.WriteLine("j={0}, thread:{1}", j, t);
+            }
+            else
+            {
+                i--;
+            }
             Thread.Sleep(100);
         }
     }
@@ -133,8 +146,8 @@ class Thread_safe_buffer
 
         t1.Start();
         t11.Start();
-        t1.Join();
-        t11.Join();
+        //t1.Join();
+        //t11.Join();
         t2.Start(1);
         t21.Start(2);
         t22.Start(3);
