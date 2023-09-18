@@ -2,16 +2,32 @@
 
 class Thread_safe_buffer
 {
-    static int[] TSBuffer = new int[10];
+    static int Capacity = 10;
+    static int[] TSBuffer = new int[Capacity];
     static int Front = 0;
     static int Back = 0;
     static int Count = 0;
 
     static void EnQueue(int eq)
     {
+        if (Count + 1 >= Capacity)
+        {
+            //Console.WriteLine("UPDATE");
+            int newCapacity = Capacity * 2;
+            var newBuffer = new int[newCapacity];
+            for (int i = 0, j = Front; j != Back; i++) 
+            {
+                newBuffer[i] = TSBuffer[j];
+                j = ++j == Capacity ? 0 : j;
+            }
+            Front = 0;
+            Back = Count;
+            Capacity = newCapacity;
+            TSBuffer = newBuffer;
+        }
+        //Console.WriteLine($"Back :{Back} {TSBuffer.Length}");
         TSBuffer[Back] = eq;
-        Back++;
-        Back %= 10;
+        Back = (++Back >= Capacity) ? 0 : Back;
         Count += 1;
     }
 
@@ -19,10 +35,17 @@ class Thread_safe_buffer
     {
         int x = 0;
         x = TSBuffer[Front];
-        Front++;
-        Front %= 10;
-        Count -= 1;
-        return x;
+        if(Count > 0)
+        {
+            Front = ++Front==Capacity?0:Front;
+            Count -= 1;
+            return x;
+        }
+        else
+        {
+            //ADD EXCEPTION OR SOMETHING
+            return 0;
+        }
     }
 
     static void th01()
@@ -70,6 +93,7 @@ class Thread_safe_buffer
 
         t1.Start();
         //t11.Start();
+        t1.Join();
         t2.Start(1);
         //t21.Start(2);
         //t22.Start(3);
